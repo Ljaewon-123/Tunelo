@@ -34,7 +34,8 @@ SSH 터널링들을 통합 관리하는 Electron 데스크탑 앱.
 - 터널별 **별칭 설정** 가능 (별칭 없으면 host:port 정보 표시)
 - 개별 터널 연결 / 끊기
 - 전체 터널 한 번에 끊기
-- 최근 연결 터널 혹은 터널 설정 저장기능 (가능하면 db미사용 최대한 가볍기를 원함 일시적 메모리 저장 허용 혹은 json파일 사용할것)
+- 최근 연결 터널
+- 터널 설정 저장기능 
 
 ### 터널 관리 기능
 - 연결 (SSH 프로세스 직접 spawn)
@@ -48,6 +49,13 @@ SSH 터널링들을 통합 관리하는 Electron 데스크탑 앱.
 - 시스템 트레이 상주 (앱 종료 시에도 트레이에 남음)
 - 유저가 원한다면 트레이에 상주하지 않고 완전 종료할수있는 옵션이나 해당 값이 있어야함 
 - 터널 설정은 JSON 파일로 로컬 저장 (`userData` 경로)
+- typescript 적극사용 
+
+### fe 요구사항 
 - fe쪽은 tailwindcss를 기본으로 설정 필요하다면 나에게 추가적인 ui프레임워크가 필요하다고 요청할것 
 - 최신 FSD폴더 구조를 따라갈것 
 - 가능하면 file-base-routing를 사용할것 (unplugin vue router) 이부분은 필수가 아니다
+- .vue파일 구조는 <script> -> <template> -> <style> 구조로 갈것 
+- 최신 vue기능 적극적으로 사용할것 ex) 양방향 바인딩에 emit사용하지 말고 defineModel 매크로 사용할것
+- 무조건 composition api 사용하고 <script setup lang="ts"></script> 로 사용 
+- 전역 상태 관리가 필요하다면 pinia를 사용
