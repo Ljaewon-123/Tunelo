@@ -118,6 +118,7 @@ function showMainWindow(): void {
   } else {
     mainWindow.show()
     mainWindow.focus()
+    mainWindow.webContents.send('tunnel:refreshRequest')
   }
 }
 
@@ -129,6 +130,7 @@ function showOverlay(): void {
     overlayWindow.once('ready-to-show', () => overlayWindow?.show())
   } else {
     overlayWindow.show()
+    overlayWindow.webContents.send('tunnel:refreshRequest')
   }
 }
 

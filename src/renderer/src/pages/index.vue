@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useTunnelStore } from '@renderer/entities/tunnel/model/store'
+import { useTunnelStore } from '@renderer/stores/store'
 import { tunnelAPI } from '@renderer/shared/api/ipc'
 import TunnelList from '@renderer/widgets/TunnelList/ui/TunnelList.vue'
 import TunnelForm from '@renderer/widgets/TunnelForm/ui/TunnelForm.vue'
@@ -11,8 +11,28 @@ const store = useTunnelStore()
 
 const showForm = ref(false)
 const editingId = ref<string | null>(null)
+const isRefreshing = ref(false)
 
-onMounted(() => store.init())
+async function handleRefresh(): Promise<void> {
+  if (isRefreshing.value) return
+  isRefreshing.value = true
+  try {
+    await store.refresh()
+  } finally {
+    isRefreshing.value = false
+  }
+}
+
+let unsubRefresh: (() => void) | null = null
+
+onMounted(() => {
+  store.init()
+  unsubRefresh = tunnelAPI.onRefreshRequest(() => store.refresh())
+})
+
+onUnmounted(() => {
+  unsubRefresh?.()
+})
 
 function openAddForm(): void {
   editingId.value = null
@@ -44,6 +64,20 @@ async function handleDisconnectAll(): Promise<void> {
         <h1 class="text-base font-bold tracking-tight">Tunelo</h1>
       </div>
       <div class="flex items-center gap-2">
+        <!-- 새로고침 -->
+        <button
+          class="p-1.5 text-gray-400 hover:text-white rounded transition-colors"
+          :class="{ 'animate-spin': isRefreshing }"
+          title="새로고침"
+          @click="handleRefresh"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+            <path d="M21 3v5h-5"/>
+            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+            <path d="M8 16H3v5"/>
+          </svg>
+        </button>
         <!-- 오버레이 모드로 전환 -->
         <button
           class="px-2.5 py-1 text-xs rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"

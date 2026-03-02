@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useTunnelStore } from '@renderer/entities/tunnel/model/store'
+import { useTunnelStore } from '@renderer/stores/store'
 import TunnelCard from '@renderer/entities/tunnel/ui/TunnelCard.vue'
 
 const emit = defineEmits<{

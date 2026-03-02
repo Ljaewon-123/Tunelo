@@ -1,12 +1,32 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
-import { useTunnelStore } from '@renderer/entities/tunnel/model/store'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useTunnelStore } from '@renderer/stores/store'
 import { tunnelAPI } from '@renderer/shared/api/ipc'
 
 const store = useTunnelStore()
 const isCollapsed = ref(false)
+const isRefreshing = ref(false)
 
-onMounted(() => store.init())
+async function handleRefresh(): Promise<void> {
+  if (isRefreshing.value) return
+  isRefreshing.value = true
+  try {
+    await store.refresh()
+  } finally {
+    isRefreshing.value = false
+  }
+}
+
+let unsubRefresh: (() => void) | null = null
+
+onMounted(() => {
+  store.init()
+  unsubRefresh = tunnelAPI.onRefreshRequest(() => store.refresh())
+})
+
+onUnmounted(() => {
+  unsubRefresh?.()
+})
 
 const displayName = (alias?: string, host?: string, localPort?: number): string =>
   alias || `${host}:${localPort}`
@@ -48,6 +68,20 @@ function openMainWindow(): void {
       </div>
 
       <div class="flex items-center gap-1 no-drag">
+        <!-- 새로고침 -->
+        <button
+          class="p-1 text-gray-400 hover:text-white rounded transition-colors"
+          :class="{ 'animate-spin': isRefreshing }"
+          title="새로고침"
+          @click="handleRefresh"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+            <path d="M21 3v5h-5"/>
+            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+            <path d="M8 16H3v5"/>
+          </svg>
+        </button>
         <!-- 펼치기/접기 -->
         <button
           class="p-1 text-gray-400 hover:text-white rounded transition-colors text-xs"

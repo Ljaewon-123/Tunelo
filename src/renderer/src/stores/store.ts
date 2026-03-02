@@ -8,6 +8,8 @@ export const useTunnelStore = defineStore('tunnel', () => {
   const statuses = ref<Map<string, TunnelStatus>>(new Map())
   const connecting = ref<Set<string>>(new Set())
   const isLoading = ref(false)
+  let unsubscribeStatus: (() => void) | null = null
+  let initialized = false
 
   const tunnelsWithStatus = computed<TunnelWithStatus[]>(() =>
     configs.value.map((c) => ({
@@ -30,7 +32,20 @@ export const useTunnelStore = defineStore('tunnel', () => {
       .slice(0, 5)
   )
 
+  async function refresh(): Promise<void> {
+    const [allConfigs, allStatuses] = await Promise.all([
+      tunnelAPI.getAll(),
+      tunnelAPI.getStatuses()
+    ])
+    configs.value = allConfigs
+    statuses.value = new Map(allStatuses.map((s) => [s.id, s]))
+  }
+
   async function init(): Promise<void> {
+    if (initialized) {
+      await refresh()
+      return
+    }
     isLoading.value = true
     try {
       const [allConfigs, allStatuses] = await Promise.all([
@@ -40,9 +55,11 @@ export const useTunnelStore = defineStore('tunnel', () => {
       configs.value = allConfigs
       statuses.value = new Map(allStatuses.map((s) => [s.id, s]))
 
-      tunnelAPI.onStatusChanged((status) => {
+      unsubscribeStatus?.()
+      unsubscribeStatus = tunnelAPI.onStatusChanged((status) => {
         statuses.value = new Map([...statuses.value, [status.id, status]])
       })
+      initialized = true
     } finally {
       isLoading.value = false
     }
@@ -108,6 +125,7 @@ export const useTunnelStore = defineStore('tunnel', () => {
     connectedTunnels,
     recentTunnels,
     init,
+    refresh,
     addTunnel,
     updateTunnel,
     removeTunnel,

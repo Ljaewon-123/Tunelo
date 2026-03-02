@@ -21,6 +21,7 @@ declare global {
       getSettings: () => Promise<AppSettings>
       updateSettings: (patch: Partial<AppSettings>) => Promise<AppSettings>
       setOverlayHeight: (height: number) => void
+      onRefreshRequest: (cb: () => void) => () => void
     }
   }
 }

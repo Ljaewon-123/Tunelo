@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactive, watch } from 'vue'
-import { useTunnelStore } from '@renderer/entities/tunnel/model/store'
+import { useTunnelStore } from '@renderer/stores/store'
 import type { TunnelConfig } from '@renderer/shared/types/tunnel'
 
 const props = defineProps<{

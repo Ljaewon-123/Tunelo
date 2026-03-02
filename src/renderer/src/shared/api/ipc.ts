@@ -20,5 +20,6 @@ export const tunnelAPI = {
   getSettings: (): Promise<AppSettings> => api.getSettings(),
   updateSettings: (settings: Partial<AppSettings>): Promise<AppSettings> =>
     api.updateSettings(settings),
-  setOverlayHeight: (height: number): void => api.setOverlayHeight(height)
+  setOverlayHeight: (height: number): void => api.setOverlayHeight(height),
+  onRefreshRequest: (cb: () => void): (() => void) => api.onRefreshRequest(cb)
 }

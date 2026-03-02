@@ -34,6 +34,13 @@ const tunnelAPI = {
   updateSettings: (patch: Partial<AppSettings>): Promise<AppSettings> =>
     ipcRenderer.invoke('settings:update', patch),
 
+  // 갱신 요청 수신 (창이 다시 표시될 때 main process가 발송)
+  onRefreshRequest: (cb: () => void): (() => void) => {
+    const handler = (): void => cb()
+    ipcRenderer.on('tunnel:refreshRequest', handler)
+    return () => ipcRenderer.removeListener('tunnel:refreshRequest', handler)
+  },
+
   // 오버레이 창 크기 조정
   setOverlayHeight: (height: number): void => ipcRenderer.send('overlay:setHeight', height)
 }
