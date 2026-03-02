@@ -1,0 +1,8 @@
+services:
+  ssh-test:
+    image: lscr.io/linuxserver/openssh-server:latest
+    environment:
+      - USER_NAME=testuser
+      - PUBLIC_KEY=${SSH_PUBLIC_KEY}
+    ports:
+      - "2222:2222"

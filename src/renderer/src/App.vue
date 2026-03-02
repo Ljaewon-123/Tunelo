@@ -2,9 +2,7 @@
 </script>
 
 <template>
-  <div>
-    <h1>Tunelo</h1>
-  </div>
+  <RouterView />
 </template>
 
 <style scoped>
