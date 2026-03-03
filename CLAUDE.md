@@ -1,11 +1,3 @@
-패키지 요약:
-
-electron ^34 + electron-vite ^3
-vue ^3.5.13 + @vitejs/plugin-vue
-TypeScript ^5.7 + vue-tsc
-Node >=24 조건 (engines 필드)
-@electron-toolkit/preload + @electron-toolkit/utils (lib 역할)
-
 # TunnelOverlay — Project Context
 
 ## 프로젝트 개요
@@ -23,14 +15,19 @@ SSH 터널링들을 통합 관리하는 Electron 데스크탑 앱.
 
 ## 앱 요구사항
 
+### 핵심기능 
+- 터널링 세션 관리 이 app에서 연결한 터널링이 아니여도 다른 앱이나 cli에서 연결한 터널링 정보도 전부 가져와서 표시해야만 한다. 
+- user가 직접 타이핑해서 연결할수있는 cli기능이 있어야 한다(메인 화면에서만)
+- cli명령어를 주기적으로 실행해서 앱 외부에서 연결된 터널도 표시해야함
+
 ### 오버레이 
 - Discord 게임 오버레이 스타일, 화면 좌상단 고정
 - 현재 **연결된 터널만** compact하게 표시
 - 접기 / 펼치기 토글 가능
 - 확대 버튼 클릭 → 메인 앱 창 오픈 -> 오버레이 close
-- 메인창에서 연결이 추가 되거나 생성되었을때 자동으로 최신화 해서 표시해야함
+- 터널링 연결이 추가 되거나 생성되었을때 자동으로 최신화 해서 표시해야함
 - 메인창에서 오버레이 버튼을 누르면 표시
-- 새로고침 아이콘으로 새로운 터널링 정보 갱신할수 있어야함
+- 새로고침 아이콘으로 새로운 터널링 정보 갱신할수 있어야함 (스스로 갱신하는게 제일 베스트)
 
 ### 메인 앱 창
 - 전체 터널 목록 표시 (연결 중 + 미연결)
@@ -48,7 +45,7 @@ SSH 터널링들을 통합 관리하는 Electron 데스크탑 앱.
 - 연결 (SSH 프로세스 직접 spawn)
 - 실시간 모니터링 (연결 상태, PID 추적)
 - 개별 끊기 / 전체 끊기
-- 이미 연결되어 있는 터널링 표시
+- 이미 연결되어 있는 터널링 표시 (app에서 추가하지 않은 터널링이라도 표시 해야 한다.)
 
 ## 기술 스택
 - **Electron** (Node.js only, 추가 백엔드 런타임 없음)
@@ -70,4 +67,12 @@ SSH 터널링들을 통합 관리하는 Electron 데스크탑 앱.
 - 전역 상태 관리가 필요하다면 pinia를 사용
 - 가능하면 import같은 ES문법만을 사용 
 
-# 단계별로 나눠서 진행할것
+
+# 터미널 확인 명령어
+app이 아니라 리눅스 혹은 윈도우에서 연결된 터널링 확인 명령어
+```
+Get-CimInstance Win32_Process -Filter "name='ssh.exe'" | Select-Object CommandLine
+```
+```
+tasklist /FI "IMAGENAME eq ssh.exe" /V
+```

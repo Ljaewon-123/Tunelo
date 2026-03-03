@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useTunnelStore } from '@renderer/stores/store'
-import TunnelCard from '@renderer/entities/tunnel/ui/TunnelCard.vue'
+import TunnelCard from '@renderer/components/TunnelCard.vue'
+import type { TunnelWithStatus, ExternalTunnel } from '@renderer/shared/types/tunnel'
 
 const emit = defineEmits<{
   edit: [id: string]
@@ -9,8 +10,19 @@ const emit = defineEmits<{
 
 const store = useTunnelStore()
 
-const connected = computed(() => store.tunnelsWithStatus.filter((t) => t.status.connected))
-const disconnected = computed(() => store.tunnelsWithStatus.filter((t) => !t.status.connected))
+const connected = computed(() =>
+  store.allTunnels.filter((t) => {
+    if ('source' in t && t.source === 'external') return true
+    return (t as TunnelWithStatus).status.connected
+  })
+)
+
+const disconnected = computed(() =>
+  store.allTunnels.filter((t) => {
+    if ('source' in t && (t as ExternalTunnel).source === 'external') return false
+    return !(t as TunnelWithStatus).status.connected
+  })
+)
 
 async function handleConnect(id: string): Promise<void> {
   try {
@@ -68,12 +80,12 @@ async function handleDelete(id: string): Promise<void> {
 
     <!-- 빈 상태 -->
     <div
-      v-if="store.tunnelsWithStatus.length === 0"
+      v-if="store.allTunnels.length === 0"
       class="text-center py-16 text-gray-500"
     >
       <p class="text-4xl mb-3">🔌</p>
-      <p class="text-sm">등록된 터널이 없습니다.</p>
-      <p class="text-xs mt-1">위 "+ 터널 추가" 버튼으로 시작하세요.</p>
+      <p class="text-sm">활성 터널이 없습니다.</p>
+      <p class="text-xs mt-1">아래 입력창에 SSH 명령어를 입력하거나, 외부에서 터널을 연결하세요.</p>
     </div>
   </div>
 </template>

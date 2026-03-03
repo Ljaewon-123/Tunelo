@@ -1,14 +1,16 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { tunnelAPI } from '@renderer/shared/api/ipc'
-import type { TunnelConfig, TunnelStatus, TunnelWithStatus } from '@renderer/shared/types/tunnel'
+import type { TunnelConfig, TunnelStatus, TunnelWithStatus, ExternalTunnel } from '@renderer/shared/types/tunnel'
 
 export const useTunnelStore = defineStore('tunnel', () => {
   const configs = ref<TunnelConfig[]>([])
   const statuses = ref<Map<string, TunnelStatus>>(new Map())
   const connecting = ref<Set<string>>(new Set())
   const isLoading = ref(false)
+  const externalTunnels = ref<ExternalTunnel[]>([])
   let unsubscribeStatus: (() => void) | null = null
+  let unsubscribeExternal: (() => void) | null = null
   let initialized = false
 
   const tunnelsWithStatus = computed<TunnelWithStatus[]>(() =>
@@ -18,8 +20,16 @@ export const useTunnelStore = defineStore('tunnel', () => {
     }))
   )
 
-  const connectedTunnels = computed(() =>
-    tunnelsWithStatus.value.filter((t) => t.status.connected)
+  const allTunnels = computed<(TunnelWithStatus | ExternalTunnel)[]>(() => [
+    ...tunnelsWithStatus.value,
+    ...externalTunnels.value
+  ])
+
+  const connectedTunnels = computed<(TunnelWithStatus | ExternalTunnel)[]>(() =>
+    allTunnels.value.filter((t) => {
+      if ('source' in t && t.source === 'external') return true
+      return (t as TunnelWithStatus).status.connected
+    })
   )
 
   const recentTunnels = computed(() =>
@@ -33,12 +43,14 @@ export const useTunnelStore = defineStore('tunnel', () => {
   )
 
   async function refresh(): Promise<void> {
-    const [allConfigs, allStatuses] = await Promise.all([
+    const [allConfigs, allStatuses, allExternal] = await Promise.all([
       tunnelAPI.getAll(),
-      tunnelAPI.getStatuses()
+      tunnelAPI.getStatuses(),
+      tunnelAPI.getExternal()
     ])
     configs.value = allConfigs
     statuses.value = new Map(allStatuses.map((s) => [s.id, s]))
+    externalTunnels.value = allExternal
   }
 
   async function init(): Promise<void> {
@@ -48,17 +60,25 @@ export const useTunnelStore = defineStore('tunnel', () => {
     }
     isLoading.value = true
     try {
-      const [allConfigs, allStatuses] = await Promise.all([
+      const [allConfigs, allStatuses, allExternal] = await Promise.all([
         tunnelAPI.getAll(),
-        tunnelAPI.getStatuses()
+        tunnelAPI.getStatuses(),
+        tunnelAPI.getExternal()
       ])
       configs.value = allConfigs
       statuses.value = new Map(allStatuses.map((s) => [s.id, s]))
+      externalTunnels.value = allExternal
 
       unsubscribeStatus?.()
       unsubscribeStatus = tunnelAPI.onStatusChanged((status) => {
         statuses.value = new Map([...statuses.value, [status.id, status]])
       })
+
+      unsubscribeExternal?.()
+      unsubscribeExternal = tunnelAPI.onExternalUpdated((tunnels) => {
+        externalTunnels.value = tunnels
+      })
+
       initialized = true
     } finally {
       isLoading.value = false
@@ -121,7 +141,9 @@ export const useTunnelStore = defineStore('tunnel', () => {
     statuses,
     connecting,
     isLoading,
+    externalTunnels,
     tunnelsWithStatus,
+    allTunnels,
     connectedTunnels,
     recentTunnels,
     init,

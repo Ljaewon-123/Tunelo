@@ -1,4 +1,4 @@
-import type { TunnelConfig, TunnelStatus, AppSettings } from '../types/tunnel'
+import type { TunnelConfig, TunnelStatus, AppSettings, ExternalTunnel } from '../types/tunnel'
 
 const api = window.tunnelAPI
 
@@ -21,5 +21,8 @@ export const tunnelAPI = {
   updateSettings: (settings: Partial<AppSettings>): Promise<AppSettings> =>
     api.updateSettings(settings),
   setOverlayHeight: (height: number): void => api.setOverlayHeight(height),
-  onRefreshRequest: (cb: () => void): (() => void) => api.onRefreshRequest(cb)
+  onRefreshRequest: (cb: () => void): (() => void) => api.onRefreshRequest(cb),
+  getExternal: (): Promise<ExternalTunnel[]> => api.getExternal(),
+  onExternalUpdated: (cb: (tunnels: ExternalTunnel[]) => void): (() => void) =>
+    api.onExternalUpdated(cb)
 }

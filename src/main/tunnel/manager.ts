@@ -1,7 +1,8 @@
 import { spawn } from 'child_process'
 import type { ChildProcess } from 'child_process'
 import { EventEmitter } from 'events'
-import type { TunnelConfig, TunnelStatus } from '../../shared/types/tunnel'
+import type { TunnelConfig, TunnelStatus, ExternalTunnel } from '../../shared/types/tunnel'
+import { scanExternalTunnels } from './scanner'
 
 function buildSSHArgs(config: TunnelConfig): string[] {
   const args = [
@@ -28,6 +29,9 @@ function buildSSHArgs(config: TunnelConfig): string[] {
 class TunnelManager extends EventEmitter {
   private processes = new Map<string, ChildProcess>()
   private statuses = new Map<string, TunnelStatus>()
+  private externalTunnels: ExternalTunnel[] = []
+  private scanInterval: NodeJS.Timeout | null = null
+  private isScanning = false
 
   getStatus(id: string): TunnelStatus {
     return this.statuses.get(id) ?? { id, connected: false }
@@ -35,6 +39,44 @@ class TunnelManager extends EventEmitter {
 
   getAllStatuses(): TunnelStatus[] {
     return [...this.statuses.values()]
+  }
+
+  getExternalTunnels(): ExternalTunnel[] {
+    return this.externalTunnels
+  }
+
+  private getManagedPids(): Set<number> {
+    const pids = new Set<number>()
+    for (const [id] of this.processes) {
+      const status = this.statuses.get(id)
+      if (status?.pid) pids.add(status.pid)
+    }
+    return pids
+  }
+
+  startScanning(intervalMs = 5000): void {
+    if (this.scanInterval) return
+    this.runScan()
+    this.scanInterval = setInterval(() => this.runScan(), intervalMs)
+  }
+
+  private async runScan(): Promise<void> {
+    if (this.isScanning) return
+    this.isScanning = true
+    try {
+      const found = await scanExternalTunnels(this.getManagedPids())
+      this.externalTunnels = found
+      this.emit('externalTunnelsUpdated', found)
+    } finally {
+      this.isScanning = false
+    }
+  }
+
+  stopScanning(): void {
+    if (this.scanInterval) {
+      clearInterval(this.scanInterval)
+      this.scanInterval = null
+    }
   }
 
   connect(config: TunnelConfig): Promise<TunnelStatus> {
@@ -125,6 +167,7 @@ class TunnelManager extends EventEmitter {
   }
 
   cleanup(): void {
+    this.stopScanning()
     this.disconnectAll()
   }
 }

@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useTunnelStore } from '@renderer/stores/store'
 import { tunnelAPI } from '@renderer/shared/api/ipc'
+import type { TunnelWithStatus, ExternalTunnel } from '@renderer/shared/types/tunnel'
 
 const store = useTunnelStore()
 const isCollapsed = ref(false)
@@ -28,8 +29,15 @@ onUnmounted(() => {
   unsubRefresh?.()
 })
 
-const displayName = (alias?: string, host?: string, localPort?: number): string =>
-  alias || `${host}:${localPort}`
+const displayName = (tunnel: TunnelWithStatus | ExternalTunnel): string => {
+  if ('source' in tunnel && tunnel.source === 'external') {
+    return (tunnel as ExternalTunnel).sshUser
+      ? `${(tunnel as ExternalTunnel).sshUser}@${(tunnel as ExternalTunnel).sshHost}:${tunnel.localPort}`
+      : `${(tunnel as ExternalTunnel).sshHost}:${tunnel.localPort}`
+  }
+  const t = tunnel as TunnelWithStatus
+  return t.alias || `${t.host}:${t.localPort}`
+}
 
 // 동적 높이 계산: 헤더(44) + 터널 항목당 40px + 여백
 const targetHeight = computed(() => {
@@ -112,7 +120,7 @@ function openMainWindow(): void {
         >
           <span class="size-1.5 rounded-full bg-green-400 shrink-0" />
           <span class="text-xs text-gray-200 truncate">
-            {{ displayName(tunnel.alias, tunnel.host, tunnel.localPort) }}
+            {{ displayName(tunnel) }}
           </span>
           <span class="ml-auto text-xs text-gray-500 shrink-0">
             :{{ tunnel.localPort }}

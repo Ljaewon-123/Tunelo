@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import type { TunnelWithStatus } from '@renderer/shared/types/tunnel'
+import type { TunnelWithStatus, ExternalTunnel } from '@renderer/shared/types/tunnel'
+
+type Tunnel = TunnelWithStatus | ExternalTunnel
 
 const props = defineProps<{
-  tunnel: TunnelWithStatus
+  tunnel: Tunnel
   isConnecting: boolean
 }>()
 
@@ -13,10 +15,15 @@ const emit = defineEmits<{
   delete: [id: string]
 }>()
 
-const displayName = (t: TunnelWithStatus): string =>
-  t.alias || `${t.host}:${t.localPort}`
+const isExternal = (t: Tunnel): t is ExternalTunnel =>
+  'source' in t && t.source === 'external'
 
-const portMapping = (t: TunnelWithStatus): string =>
+const displayName = (t: Tunnel): string => {
+  if (isExternal(t)) return t.sshUser ? `${t.sshUser}@${t.sshHost}` : t.sshHost
+  return t.alias || `${t.host}:${t.localPort}`
+}
+
+const portMapping = (t: Tunnel): string =>
   `localhost:${t.localPort} → ${t.remoteHost}:${t.remotePort}`
 
 const connectedSince = (iso?: string): string => {
@@ -41,7 +48,13 @@ const lastConnected = (iso?: string): string => {
 <template>
   <div
     class="bg-gray-800 rounded-lg p-4 border transition-colors"
-    :class="props.tunnel.status.connected ? 'border-green-700' : 'border-gray-700'"
+    :class="
+      isExternal(props.tunnel)
+        ? 'border-blue-700'
+        : (props.tunnel as TunnelWithStatus).status.connected
+          ? 'border-green-700'
+          : 'border-gray-700'
+    "
   >
     <!-- 상단: 이름 + 상태 + 버튼 -->
     <div class="flex items-center justify-between gap-2">
@@ -50,23 +63,39 @@ const lastConnected = (iso?: string): string => {
         <span
           class="shrink-0 size-2.5 rounded-full"
           :class="
-            props.isConnecting
-              ? 'bg-yellow-400 animate-pulse'
-              : props.tunnel.status.connected
-                ? 'bg-green-400'
-                : 'bg-gray-600'
+            isExternal(props.tunnel)
+              ? 'bg-green-400'
+              : props.isConnecting
+                ? 'bg-yellow-400 animate-pulse'
+                : (props.tunnel as TunnelWithStatus).status.connected
+                  ? 'bg-green-400'
+                  : 'bg-gray-600'
           "
         />
         <span class="font-medium text-white truncate">{{ displayName(props.tunnel) }}</span>
-        <span v-if="props.tunnel.status.pid" class="text-xs text-gray-500">
-          PID {{ props.tunnel.status.pid }}
+
+        <!-- 외부 터널 배지 -->
+        <span
+          v-if="isExternal(props.tunnel)"
+          class="text-xs bg-blue-900 text-blue-300 px-1.5 py-0.5 rounded-full shrink-0"
+          title="이 앱 외부에서 연결된 터널입니다"
+        >
+          외부 PID {{ (props.tunnel as ExternalTunnel).pid }}
+        </span>
+
+        <!-- 앱 터널 PID -->
+        <span
+          v-else-if="(props.tunnel as TunnelWithStatus).status.pid"
+          class="text-xs text-gray-500"
+        >
+          PID {{ (props.tunnel as TunnelWithStatus).status.pid }}
         </span>
       </div>
 
-      <!-- 액션 버튼 -->
-      <div class="flex items-center gap-1.5 shrink-0">
+      <!-- 액션 버튼 (앱 터널만) -->
+      <div v-if="!isExternal(props.tunnel)" class="flex items-center gap-1.5 shrink-0">
         <button
-          v-if="!props.tunnel.status.connected"
+          v-if="!(props.tunnel as TunnelWithStatus).status.connected"
           :disabled="props.isConnecting"
           class="px-3 py-1 text-sm rounded bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors"
           @click="emit('connect', props.tunnel.id)"
@@ -101,17 +130,23 @@ const lastConnected = (iso?: string): string => {
     <!-- 하단: 포트 매핑 + 연결 정보 -->
     <div class="mt-2 flex items-center justify-between text-xs text-gray-400">
       <span>{{ portMapping(props.tunnel) }}</span>
-      <span v-if="props.tunnel.status.connected && props.tunnel.status.connectedAt">
-        {{ connectedSince(props.tunnel.status.connectedAt) }} 부터 연결됨
+      <span v-if="isExternal(props.tunnel)">외부 프로세스 연결됨</span>
+      <span
+        v-else-if="(props.tunnel as TunnelWithStatus).status.connected && (props.tunnel as TunnelWithStatus).status.connectedAt"
+      >
+        {{ connectedSince((props.tunnel as TunnelWithStatus).status.connectedAt) }} 부터 연결됨
       </span>
-      <span v-else-if="props.tunnel.lastConnectedAt">
-        {{ lastConnected(props.tunnel.lastConnectedAt) }}에 마지막 연결
+      <span v-else-if="(props.tunnel as TunnelWithStatus).lastConnectedAt">
+        {{ lastConnected((props.tunnel as TunnelWithStatus).lastConnectedAt) }}에 마지막 연결
       </span>
     </div>
 
-    <!-- 에러 메시지 -->
-    <p v-if="props.tunnel.status.error" class="mt-1.5 text-xs text-red-400">
-      {{ props.tunnel.status.error }}
+    <!-- 에러 메시지 (앱 터널만) -->
+    <p
+      v-if="!isExternal(props.tunnel) && (props.tunnel as TunnelWithStatus).status.error"
+      class="mt-1.5 text-xs text-red-400"
+    >
+      {{ (props.tunnel as TunnelWithStatus).status.error }}
     </p>
   </div>
 </template>

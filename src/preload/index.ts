@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import type { TunnelConfig, TunnelStatus, AppSettings } from '../shared/types/tunnel'
+import type { TunnelConfig, TunnelStatus, AppSettings, ExternalTunnel } from '../shared/types/tunnel'
 
 const tunnelAPI = {
   // Tunnel CRUD
@@ -42,7 +42,15 @@ const tunnelAPI = {
   },
 
   // 오버레이 창 크기 조정
-  setOverlayHeight: (height: number): void => ipcRenderer.send('overlay:setHeight', height)
+  setOverlayHeight: (height: number): void => ipcRenderer.send('overlay:setHeight', height),
+
+  // 외부 터널
+  getExternal: (): Promise<ExternalTunnel[]> => ipcRenderer.invoke('tunnel:getExternal'),
+  onExternalUpdated: (cb: (tunnels: ExternalTunnel[]) => void): (() => void) => {
+    const handler = (_: Electron.IpcRendererEvent, tunnels: ExternalTunnel[]): void => cb(tunnels)
+    ipcRenderer.on('tunnel:externalUpdated', handler)
+    return () => ipcRenderer.removeListener('tunnel:externalUpdated', handler)
+  }
 }
 
 if (process.contextIsolated) {

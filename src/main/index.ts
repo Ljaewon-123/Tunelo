@@ -4,7 +4,7 @@ import { existsSync } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { tunnelManager } from './tunnel/manager'
 import * as tunnelStore from './tunnel/store'
-import type { TunnelConfig, TunnelStatus, AppSettings } from '../shared/types/tunnel'
+import type { TunnelConfig, TunnelStatus, AppSettings, ExternalTunnel } from '../shared/types/tunnel'
 
 let mainWindow: BrowserWindow | null = null
 let overlayWindow: BrowserWindow | null = null
@@ -142,6 +142,14 @@ function broadcastStatus(status: TunnelStatus): void {
   })
 }
 
+function broadcastExternalUpdate(tunnels: ExternalTunnel[]): void {
+  BrowserWindow.getAllWindows().forEach((win) => {
+    if (!win.isDestroyed()) {
+      win.webContents.send('tunnel:externalUpdated', tunnels)
+    }
+  })
+}
+
 // --- IPC 핸들러 등록 ---
 
 function registerIpcHandlers(): void {
@@ -189,6 +197,9 @@ function registerIpcHandlers(): void {
     tunnelStore.updateSettings(patch)
   )
 
+  // 외부 터널 조회
+  ipcMain.handle('tunnel:getExternal', () => tunnelManager.getExternalTunnels())
+
   // 오버레이 높이 동적 조정
   ipcMain.on('overlay:setHeight', (event, height: number) => {
     const win = BrowserWindow.fromWebContents(event.sender)
@@ -209,6 +220,8 @@ app.whenReady().then(() => {
   })
 
   tunnelManager.on('statusChanged', broadcastStatus)
+  tunnelManager.on('externalTunnelsUpdated', broadcastExternalUpdate)
+  tunnelManager.startScanning(5000)
 
   registerIpcHandlers()
 

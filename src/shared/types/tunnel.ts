@@ -25,3 +25,15 @@ export interface TunnelStatus {
 export interface AppSettings {
   exitToTray: boolean
 }
+
+export interface ExternalTunnel {
+  id: string // `ext-${pid}`
+  source: 'external'
+  pid: number
+  localPort: number
+  remoteHost: string
+  remotePort: number
+  sshHost: string
+  sshUser?: string
+  commandLine: string
+}

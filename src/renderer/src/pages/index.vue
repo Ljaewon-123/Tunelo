@@ -3,14 +3,15 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTunnelStore } from '@renderer/stores/store'
 import { tunnelAPI } from '@renderer/shared/api/ipc'
-import TunnelList from '@renderer/widgets/TunnelList/ui/TunnelList.vue'
-import TunnelForm from '@renderer/widgets/TunnelForm/ui/TunnelForm.vue'
+import TunnelList from '@renderer/components/TunnelList/ui/TunnelList.vue'
+import TunnelForm from '@renderer/components/TunnelForm/ui/TunnelForm.vue'
+import TunnelCLI from '@renderer/components/TunnelCLI/ui/TunnelCLI.vue'
 
 const router = useRouter()
 const store = useTunnelStore()
 
-const showForm = ref(false)
 const editingId = ref<string | null>(null)
+const showEditForm = ref(false)
 const isRefreshing = ref(false)
 
 async function handleRefresh(): Promise<void> {
@@ -34,18 +35,13 @@ onUnmounted(() => {
   unsubRefresh?.()
 })
 
-function openAddForm(): void {
-  editingId.value = null
-  showForm.value = true
-}
-
 function openEditForm(id: string): void {
   editingId.value = id
-  showForm.value = true
+  showEditForm.value = true
 }
 
 function closeForm(): void {
-  showForm.value = false
+  showEditForm.value = false
   editingId.value = null
 }
 
@@ -98,12 +94,6 @@ async function handleDisconnectAll(): Promise<void> {
     <!-- 툴바 -->
     <div class="flex items-center gap-2 px-5 py-3 border-b border-gray-700/50 shrink-0">
       <button
-        class="px-3 py-1.5 text-sm rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
-        @click="openAddForm"
-      >
-        + 터널 추가
-      </button>
-      <button
         :disabled="store.connectedTunnels.length === 0"
         class="px-3 py-1.5 text-sm rounded-lg bg-gray-700 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors"
         @click="handleDisconnectAll"
@@ -111,22 +101,27 @@ async function handleDisconnectAll(): Promise<void> {
         전체 끊기
       </button>
       <span class="ml-auto text-xs text-gray-500">
-        {{ store.connectedTunnels.length }} / {{ store.tunnelsWithStatus.length }} 연결됨
+        {{ store.connectedTunnels.length }} / {{ store.allTunnels.length }} 연결됨
       </span>
     </div>
 
     <!-- 터널 목록 -->
-    <main class="flex-1 overflow-y-auto px-5 py-4">
+    <main class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
       <!-- 로딩 -->
       <div v-if="store.isLoading" class="flex items-center justify-center py-16 text-gray-500">
         <span class="text-sm">불러오는 중…</span>
       </div>
-      <TunnelList v-else @edit="openEditForm" />
+      <template v-else>
+        <!-- CLI 입력 -->
+        <TunnelCLI />
+        <!-- 터널 목록 -->
+        <TunnelList @edit="openEditForm" />
+      </template>
     </main>
 
-    <!-- 터널 추가/수정 모달 -->
+    <!-- 터널 수정 모달 -->
     <TunnelForm
-      v-if="showForm"
+      v-if="showEditForm"
       :tunnel-id="editingId"
       @close="closeForm"
     />

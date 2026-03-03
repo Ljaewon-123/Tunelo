@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import type { TunnelConfig, TunnelStatus, AppSettings } from './shared/types/tunnel'
+import type { TunnelConfig, TunnelStatus, AppSettings, ExternalTunnel } from './shared/types/tunnel'
 
 declare global {
   interface Window {
@@ -22,6 +22,8 @@ declare global {
       updateSettings: (patch: Partial<AppSettings>) => Promise<AppSettings>
       setOverlayHeight: (height: number) => void
       onRefreshRequest: (cb: () => void) => () => void
+      getExternal: () => Promise<ExternalTunnel[]>
+      onExternalUpdated: (cb: (tunnels: ExternalTunnel[]) => void) => () => void
     }
   }
 }
