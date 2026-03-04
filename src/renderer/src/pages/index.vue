@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTunnelStore } from '@renderer/stores/store'
 import { tunnelAPI } from '@renderer/shared/api/ipc'
@@ -13,6 +13,21 @@ const store = useTunnelStore()
 const editingId = ref<string | null>(null)
 const showEditForm = ref(false)
 const isRefreshing = ref(false)
+
+// 최근 연결했지만 현재 미연결 상태인 터널 (최대 3개)
+const recentDisconnected = computed(() =>
+  store.recentTunnels
+    .filter((t) => !store.statuses.get(t.id)?.connected)
+    .slice(0, 3)
+)
+
+async function quickConnect(id: string): Promise<void> {
+  try {
+    await store.connectTunnel(id)
+  } catch {
+    // 에러는 TunnelCard에서 표시
+  }
+}
 
 async function handleRefresh(): Promise<void> {
   if (isRefreshing.value) return
@@ -114,6 +129,27 @@ async function handleDisconnectAll(): Promise<void> {
       <template v-else>
         <!-- CLI 입력 -->
         <TunnelCLI />
+
+        <!-- 최근 연결 터널 (미연결 상태인 것만) -->
+        <div v-if="recentDisconnected.length > 0">
+          <p class="text-xs text-gray-500 mb-2">최근 연결</p>
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="t in recentDisconnected"
+              :key="t.id"
+              :disabled="store.connecting.has(t.id)"
+              class="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full bg-gray-800 border border-gray-700 hover:border-gray-500 hover:text-white text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              @click="quickConnect(t.id)"
+            >
+              <span
+                class="size-1.5 rounded-full shrink-0"
+                :class="store.connecting.has(t.id) ? 'bg-yellow-400 animate-pulse' : 'bg-gray-600'"
+              />
+              {{ t.alias || `${t.host}:${t.localPort}` }}
+            </button>
+          </div>
+        </div>
+
         <!-- 터널 목록 -->
         <TunnelList @edit="openEditForm" />
       </template>
