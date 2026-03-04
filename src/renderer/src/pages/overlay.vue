@@ -95,13 +95,17 @@ function openMainWindow(): void {
           {{ isCollapsed ? '▼' : '▲' }}
         </button>
         <!-- 메인 창 열기 -->
-        <button
-          class="p-1 text-gray-400 hover:text-white rounded transition-colors text-xs"
-          title="메인 창 열기"
-          @click="openMainWindow"
-        >
-          ⊞
-        </button>
+        <div class="relative group">
+          <button
+            class="p-1 text-gray-400 hover:text-white rounded transition-colors"
+            @click="openMainWindow"
+          >
+            <AppIcon name="expand" class="size-3" />
+          </button>
+          <span class="pointer-events-none absolute right-0 top-full mt-1.5 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-200 opacity-0 transition-opacity group-hover:opacity-100">
+            메인 창 열기
+          </span>
+        </div>
       </div>
     </div>
 

@@ -86,13 +86,17 @@ async function handleDisconnectAll(): Promise<void> {
           <AppIcon name="refresh" class="size-4" />
         </button>
         <!-- 오버레이 모드로 전환 -->
-        <button
-          class="px-2.5 py-1 text-xs rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-          title="오버레이로 전환"
-          @click="tunnelAPI.showOverlay()"
-        >
-          오버레이 ▢
-        </button>
+        <div class="relative group">
+          <button
+            class="p-1.5 text-gray-400 hover:text-white rounded transition-colors"
+            @click="tunnelAPI.showOverlay()"
+          >
+            <AppIcon name="overlay" class="size-4" />
+          </button>
+          <span class="pointer-events-none absolute right-0 top-full mt-1.5 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-200 opacity-0 transition-opacity group-hover:opacity-100">
+            오버레이로 전환
+          </span>
+        </div>
         <button
           class="text-sm text-gray-400 hover:text-white transition-colors"
           @click="router.push('/settings')"
