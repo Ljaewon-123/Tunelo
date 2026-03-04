@@ -200,6 +200,11 @@ function registerIpcHandlers(): void {
   // 외부 터널 조회
   ipcMain.handle('tunnel:getExternal', () => tunnelManager.getExternalTunnels())
 
+  // 외부 터널 프로세스 종료
+  ipcMain.handle('tunnel:killExternal', (_, pid: number) => {
+    process.kill(pid)
+  })
+
   // 오버레이 높이 동적 조정
   ipcMain.on('overlay:setHeight', (event, height: number) => {
     const win = BrowserWindow.fromWebContents(event.sender)

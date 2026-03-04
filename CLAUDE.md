@@ -58,6 +58,7 @@ SSH 터널링들을 통합 관리하는 Electron 데스크탑 앱.
 - defu, destr 이 유용한 곳에서는 해당 lib사용
 
 ### fe 요구사항 
+- 무조건 vue3.5+ 이상버전 사용
 - fe쪽은 tailwindcss를 기본으로 설정 필요하다면 나에게 추가적인 ui프레임워크가 필요하다고 요청할것 
 - 최신 FSD폴더 구조를 따라갈것 
 - 가능하면 file-base-routing를 사용할것 (unplugin vue router) 이부분은 필수가 아니다
