@@ -23,6 +23,7 @@ export const tunnelAPI = {
   setOverlayHeight: (height: number): void => api.setOverlayHeight(height),
   onRefreshRequest: (cb: () => void): (() => void) => api.onRefreshRequest(cb),
   getExternal: (): Promise<ExternalTunnel[]> => api.getExternal(),
+  killExternal: (pid: number): Promise<void> => api.killExternal(pid),
   onExternalUpdated: (cb: (tunnels: ExternalTunnel[]) => void): (() => void) =>
     api.onExternalUpdated(cb)
 }

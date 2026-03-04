@@ -136,6 +136,11 @@ export const useTunnelStore = defineStore('tunnel', () => {
     statuses.value = next
   }
 
+  async function killExternalTunnel(pid: number): Promise<void> {
+    await tunnelAPI.killExternal(pid)
+    externalTunnels.value = externalTunnels.value.filter((t) => t.pid !== pid)
+  }
+
   return {
     configs,
     statuses,
@@ -153,6 +158,7 @@ export const useTunnelStore = defineStore('tunnel', () => {
     removeTunnel,
     connectTunnel,
     disconnectTunnel,
-    disconnectAll
+    disconnectAll,
+    killExternalTunnel
   }
 })

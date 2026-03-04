@@ -23,6 +23,7 @@ declare global {
       setOverlayHeight: (height: number) => void
       onRefreshRequest: (cb: () => void) => () => void
       getExternal: () => Promise<ExternalTunnel[]>
+      killExternal: (pid: number) => Promise<void>
       onExternalUpdated: (cb: (tunnels: ExternalTunnel[]) => void) => () => void
     }
   }

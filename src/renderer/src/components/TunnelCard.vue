@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref, nextTick } from 'vue'
 import type { TunnelWithStatus, ExternalTunnel } from '@renderer/shared/types/tunnel'
 
 type Tunnel = TunnelWithStatus | ExternalTunnel
@@ -13,6 +14,8 @@ const emit = defineEmits<{
   disconnect: [id: string]
   edit: [id: string]
   delete: [id: string]
+  rename: [id: string, alias: string]
+  killExternal: [pid: number]
 }>()
 
 const isExternal = (t: Tunnel): t is ExternalTunnel =>
@@ -43,6 +46,28 @@ const lastConnected = (iso?: string): string => {
   if (diffH < 24) return `${diffH}시간 전`
   return `${Math.floor(diffH / 24)}일 전`
 }
+
+// 인라인 별칭 편집
+const isEditing = ref(false)
+const editingAlias = ref('')
+const aliasInput = ref<HTMLInputElement | null>(null)
+
+function startEdit(): void {
+  if (isExternal(props.tunnel)) return
+  editingAlias.value = (props.tunnel as TunnelWithStatus).alias ?? ''
+  isEditing.value = true
+  nextTick(() => aliasInput.value?.select())
+}
+
+function confirmEdit(): void {
+  if (!isEditing.value) return
+  isEditing.value = false
+  emit('rename', props.tunnel.id, editingAlias.value.trim())
+}
+
+function cancelEdit(): void {
+  isEditing.value = false
+}
 </script>
 
 <template>
@@ -72,7 +97,27 @@ const lastConnected = (iso?: string): string => {
                   : 'bg-gray-600'
           "
         />
-        <span class="font-medium text-white truncate">{{ displayName(props.tunnel) }}</span>
+
+        <!-- 편집 input (앱 터널) -->
+        <input
+          v-if="isEditing && !isExternal(props.tunnel)"
+          ref="aliasInput"
+          v-model="editingAlias"
+          type="text"
+          class="font-medium text-white bg-gray-700 border border-blue-500 rounded px-1.5 py-0 text-sm focus:outline-none min-w-0 max-w-[160px]"
+          @blur="confirmEdit"
+          @keyup.enter="confirmEdit"
+          @keyup.escape="cancelEdit"
+        />
+        <!-- 앱 터널 이름 — hover 시 점선 밑줄로 편집 가능 힌트 -->
+        <span
+          v-else-if="!isExternal(props.tunnel)"
+          class="font-medium text-white truncate cursor-text hover:underline hover:decoration-dashed hover:decoration-gray-500 hover:underline-offset-2"
+          title="더블클릭으로 별칭 편집"
+          @dblclick="startEdit"
+        >{{ displayName(props.tunnel) }}</span>
+        <!-- 외부 터널 이름 -->
+        <span v-else class="font-medium text-white truncate">{{ displayName(props.tunnel) }}</span>
 
         <!-- 외부 터널 배지 -->
         <span
@@ -92,38 +137,51 @@ const lastConnected = (iso?: string): string => {
         </span>
       </div>
 
-      <!-- 액션 버튼 (앱 터널만) -->
-      <div v-if="!isExternal(props.tunnel)" class="flex items-center gap-1.5 shrink-0">
+      <!-- 액션 버튼 -->
+      <div class="flex items-center gap-1.5 shrink-0">
+        <!-- 외부 터널 끊기 -->
         <button
-          v-if="!(props.tunnel as TunnelWithStatus).status.connected"
-          :disabled="props.isConnecting"
-          class="px-3 py-1 text-sm rounded bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors"
-          @click="emit('connect', props.tunnel.id)"
-        >
-          {{ props.isConnecting ? '연결 중…' : '연결' }}
-        </button>
-        <button
-          v-else
-          class="px-3 py-1 text-sm rounded bg-gray-700 hover:bg-gray-600 text-white transition-colors"
-          @click="emit('disconnect', props.tunnel.id)"
+          v-if="isExternal(props.tunnel)"
+          class="px-3 py-1 text-sm rounded bg-gray-700 hover:bg-red-700 text-white transition-colors"
+          title="외부 프로세스 종료"
+          @click="emit('killExternal', (props.tunnel as ExternalTunnel).pid)"
         >
           끊기
         </button>
 
-        <button
-          class="px-2 py-1 text-sm rounded text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-          title="수정"
-          @click="emit('edit', props.tunnel.id)"
-        >
-          ✎
-        </button>
-        <button
-          class="px-2 py-1 text-sm rounded text-gray-400 hover:text-red-400 hover:bg-gray-700 transition-colors"
-          title="삭제"
-          @click="emit('delete', props.tunnel.id)"
-        >
-          ✕
-        </button>
+        <!-- 앱 터널 버튼 -->
+        <template v-else>
+          <button
+            v-if="!(props.tunnel as TunnelWithStatus).status.connected"
+            :disabled="props.isConnecting"
+            class="px-3 py-1 text-sm rounded bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors"
+            @click="emit('connect', props.tunnel.id)"
+          >
+            {{ props.isConnecting ? '연결 중…' : '연결' }}
+          </button>
+          <button
+            v-else
+            class="px-3 py-1 text-sm rounded bg-gray-700 hover:bg-gray-600 text-white transition-colors"
+            @click="emit('disconnect', props.tunnel.id)"
+          >
+            끊기
+          </button>
+
+          <button
+            class="px-2 py-1 text-sm rounded text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+            title="수정"
+            @click="emit('edit', props.tunnel.id)"
+          >
+            ✎
+          </button>
+          <button
+            class="px-2 py-1 text-sm rounded text-gray-400 hover:text-red-400 hover:bg-gray-700 transition-colors"
+            title="삭제"
+            @click="emit('delete', props.tunnel.id)"
+          >
+            ✕
+          </button>
+        </template>
       </div>
     </div>
 

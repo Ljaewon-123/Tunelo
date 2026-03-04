@@ -36,6 +36,15 @@ async function handleDelete(id: string): Promise<void> {
   if (!confirm('이 터널을 삭제하시겠습니까?')) return
   await store.removeTunnel(id)
 }
+
+async function handleRename(id: string, alias: string): Promise<void> {
+  await store.updateTunnel(id, { alias: alias || undefined })
+}
+
+async function handleKillExternal(pid: number): Promise<void> {
+  if (!confirm('외부 SSH 프로세스를 종료하시겠습니까?')) return
+  await store.killExternalTunnel(pid)
+}
 </script>
 
 <template>
@@ -55,6 +64,8 @@ async function handleDelete(id: string): Promise<void> {
           @disconnect="store.disconnectTunnel"
           @edit="emit('edit', $event)"
           @delete="handleDelete"
+          @rename="handleRename"
+          @kill-external="handleKillExternal"
         />
       </div>
     </section>
@@ -74,6 +85,8 @@ async function handleDelete(id: string): Promise<void> {
           @disconnect="store.disconnectTunnel"
           @edit="emit('edit', $event)"
           @delete="handleDelete"
+          @rename="handleRename"
+          @kill-external="handleKillExternal"
         />
       </div>
     </section>

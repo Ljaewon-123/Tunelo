@@ -5,3 +5,4 @@ out
 *.local
 manual.md
 .env.test
+NUL
