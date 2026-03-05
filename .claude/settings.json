@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command \"Write-Host $env:TEMP; Write-Host $env:TMP\")",
+      "Bash(powershell -Command \"cmd /c echo %TEMP%\")"
+    ]
+  }
+}

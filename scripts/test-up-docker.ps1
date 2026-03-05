@@ -6,10 +6,9 @@ $sshHost = "tunelo-test"
 $projectRoot = Split-Path $PSScriptRoot -Parent
 $envFile = Join-Path $projectRoot ".env.test"
 
-# Docker 재시작마다 컨테이너 호스트 키가 바뀌므로
-# NUL(Windows 널 장치) 대신 전용 임시 파일을 사용하고 매번 삭제해 키 충돌을 방지한다
-# (Git Bash의 OpenSSH는 NUL을 실제 파일로 생성해 이전 키가 남아 충돌 발생)
-$knownHostsTemp = "$env:TEMP\tunelo_test_known_hosts"
+# $env:TEMP 가 8.3 단축경로(C:\TEMPFI~1)일 수 있으므로 풀 경로로 해석
+# → ssh-keyscan/ssh 가 경로를 올바르게 인식하도록 보장
+$knownHostsTemp = Join-Path (Get-Item $env:TEMP).FullName "tunelo_test_known_hosts"
 
 # --- Check Docker ---
 if (!(Get-Command docker -ErrorAction SilentlyContinue)) {
@@ -29,14 +28,15 @@ $pubKey = (Get-Content "$keyPath.pub" -Raw).Trim()
 [System.IO.File]::WriteAllText($envFile, "SSH_PUBLIC_KEY=$pubKey")
 
 # --- Always overwrite SSH config entry (host key changes every restart) ---
-# UserKnownHostsFile: 전용 임시 파일 경로 지정 (NUL은 Git Bash에서 실제 파일로 생성되어 키 충돌 유발)
+# UserKnownHostsFile: ssh-keyscan 으로 매번 갱신하는 전용 임시 파일 사용
+# StrictHostKeyChecking yes: known_hosts 에 등록된 키만 허용 (보안 강화)
 $configEntry = @"
 Host $sshHost
   HostName localhost
   Port 2222
   User testuser
   IdentityFile $keyPath
-  StrictHostKeyChecking no
+  StrictHostKeyChecking yes
   UserKnownHostsFile $knownHostsTemp
   LogLevel ERROR
   BatchMode yes
@@ -56,9 +56,9 @@ if ($configContent -match "(?ms)Host $sshHost\b.*?(?=\nHost |\z)") {
 }
 Write-Host "SSH config updated: $sshHost" -ForegroundColor Green
 
-# 컨테이너가 재시작되면 호스트 키가 바뀌므로 임시 known_hosts를 항상 초기화
+# 이전 known_hosts 초기화 (컨테이너 재시작 시 호스트 키 변경됨)
 if (Test-Path $knownHostsTemp) { Remove-Item $knownHostsTemp -Force }
-# 프로젝트 디렉터리에 남아있을 수 있는 NUL 파일 정리 (이전 실행 잔재)
+# 이전 실행이 남긴 NUL 파일 정리 (Git Bash OpenSSH 버그 잔재)
 if (Test-Path (Join-Path $projectRoot "NUL")) { Remove-Item (Join-Path $projectRoot "NUL") -Force }
 
 # --- Start container ---
@@ -90,18 +90,34 @@ if (!$tcpReady) {
   exit 1
 }
 
-# --- Phase 2: Wait for SSH auth (up to 60s) ---
-# Pass options directly on CLI to bypass any stale config / known_hosts issues
+# --- Phase 2: ssh-keyscan 으로 현재 컨테이너 호스트 키를 known_hosts 에 등록 ---
+# StrictHostKeyChecking=no 방식은 auth check 이후 키가 바뀔 수 있어 터널 연결 시 충돌 발생
+# ssh-keyscan 으로 최신 키를 직접 파일에 써서 불일치 원천 차단
+Write-Host "  Scanning host keys..." -ForegroundColor DarkGray
+$keyScanReady = $false
+for ($i = 1; $i -le 15; $i++) {
+  Start-Sleep -Seconds 2
+  # ssh-keyscan: 서버가 제공하는 모든 알고리즘 키를 수집해 known_hosts 형식으로 출력
+  $scannedKeys = ssh-keyscan -p 2222 localhost 2>$null
+  if ($scannedKeys -and $scannedKeys.Count -gt 0) {
+    [System.IO.File]::WriteAllLines($knownHostsTemp, $scannedKeys)
+    Write-Host "  Host keys registered (${i * 2}s elapsed)" -ForegroundColor DarkGray
+    $keyScanReady = $true
+    break
+  }
+}
+
+if (!$keyScanReady) {
+  Write-Host "[ERROR] ssh-keyscan failed after 30s" -ForegroundColor Red
+  exit 1
+}
+
+# --- Phase 3: Wait for SSH auth (up to 60s) ---
 Write-Host "  Waiting for SSH auth..." -ForegroundColor DarkGray
 $ready = $false
 for ($i = 1; $i -le 30; $i++) {
   Start-Sleep -Seconds 2
-  $result = & ssh `
-    -o StrictHostKeyChecking=no `
-    -o "UserKnownHostsFile=$knownHostsTemp" `
-    -o ConnectTimeout=3 `
-    -o BatchMode=yes `
-    $sshHost "echo OK" 2>$null
+  $result = & ssh -o ConnectTimeout=3 $sshHost "echo OK" 2>$null
   if ($result -match "OK") {
     Write-Host "  Auth OK ($($i * 2)s elapsed)" -ForegroundColor DarkGray
     $ready = $true
@@ -122,32 +138,29 @@ if (!$ready) {
 # --- Success ---
 Write-Host "[3/3] Connection verified!" -ForegroundColor Green
 
-# --- Phase 3: Start SSH tunnel (local port forwarding) ---
+# --- Phase 4: Start SSH tunnel (local port forwarding) ---
 # -N  : 원격 명령 실행 없이 포트 포워딩 전용으로 연결
-# -f  : 인증 후 백그라운드로 전환 (터미널 점유 없이 상주)
+# -f  제거: Windows OpenSSH -f fork가 known_hosts 경로를 재해석해 키 충돌 유발
+#           Start-Process -WindowStyle Hidden 으로 대신 백그라운드 처리
 # -L  : 로컬 포트(18080) → 원격 컨테이너 내부 포트(8080) 포워딩
 # -o ExitOnForwardFailure=yes : 포워딩 바인드 실패 시 즉시 종료 (포트 충돌 감지)
 Write-Host ""
 Write-Host "[4/4] Starting SSH tunnel  localhost:18080 -> container:8080 ..." -ForegroundColor Cyan
 
-# 이미 18080 포트를 점유한 ssh 프로세스가 있으면 먼저 종료
+# 이미 18080 포트를 점유한 프로세스가 있으면 먼저 종료
 $existingTunnel = netstat -ano | Select-String "0.0.0.0:18080|127.0.0.1:18080"
 if ($existingTunnel) {
   Write-Host "  Port 18080 already in use. Killing existing process..." -ForegroundColor Yellow
-  # netstat 출력에서 PID 추출 후 강제 종료
   $pid18080 = ($existingTunnel -split '\s+')[-1] | Select-Object -First 1
   if ($pid18080 -match '^\d+$') { Stop-Process -Id $pid18080 -Force -ErrorAction SilentlyContinue }
   Start-Sleep -Seconds 1
 }
 
-# 터널 프로세스 백그라운드 실행
-# Start-Process 로 별도 프로세스 생성 → PID 추적 가능
-# -f 는 SSH 내부 fork라 Node child_process와 다르게 동작하므로 -N 만 사용하고 Start-Process로 백그라운드 처리
-$tunnelArgs = @("-N", "-f", "-L", "18080:localhost:8080", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=$knownHostsTemp", "-o", "ExitOnForwardFailure=yes", "-o", "BatchMode=yes", $sshHost)
+# 터널 프로세스 백그라운드 실행 (Start-Process 로 숨김 창 생성)
+$tunnelArgs = @("-N", "-L", "18080:localhost:8080", "-o", "ExitOnForwardFailure=yes", $sshHost)
 $tunnelProc = Start-Process ssh -ArgumentList $tunnelArgs -PassThru -WindowStyle Hidden
 
-# -f 옵션은 SSH 내부적으로 fork하기 때문에 Start-Process 반환 PID와 실제 ssh 프로세스 PID가 다를 수 있음
-# 따라서 포트 바인딩 여부로 터널 정상 가동 확인
+# 포트 바인딩 여부로 터널 정상 가동 확인
 Write-Host "  Waiting for tunnel to bind port 18080..." -ForegroundColor DarkGray
 $tunnelReady = $false
 for ($i = 1; $i -le 10; $i++) {

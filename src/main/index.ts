@@ -225,8 +225,8 @@ function registerIpcHandlers(): void {
   ipcMain.on('overlay:setHeight', (event, height: number) => {
     const win = BrowserWindow.fromWebContents(event.sender)
     if (win && !win.isDestroyed()) {
-      const [w] = win.getSize()
-      win.setSize(w, Math.max(44, Math.min(height, 400)))
+      const [w] = win.getContentSize()
+      win.setContentSize(w, Math.max(44, Math.min(height, 400)))
     }
   })
 }

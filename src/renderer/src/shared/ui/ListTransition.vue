@@ -12,7 +12,7 @@ defineProps<{ tag?: string }>()
   </TransitionGroup>
 </template>
 
-<style scoped>
+<style>
 .tunnel-list-move,
 .tunnel-list-enter-active,
 .tunnel-list-leave-active {

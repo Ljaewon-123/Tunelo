@@ -44,12 +44,13 @@ const containerRef = ref<HTMLElement | null>(null)
 
 async function syncHeight(): Promise<void> {
   await nextTick()
+  await new Promise<void>((resolve) => setTimeout(resolve, 300))
   if (containerRef.value) {
     tunnelAPI.setOverlayHeight(containerRef.value.scrollHeight)
   }
 }
 
-watch(() => store.connectedTunnels.length, syncHeight)
+watch(() => store.connectedTunnels, syncHeight)
 
 function openMainWindow(): void {
   tunnelAPI.openMainWindow()
