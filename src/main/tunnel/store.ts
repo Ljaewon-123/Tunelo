@@ -8,6 +8,7 @@ import type { TunnelConfig, AppSettings } from '../../shared/types/tunnel'
 
 const tunnelsPath = (): string => join(app.getPath('userData'), 'tunnels.json')
 const settingsPath = (): string => join(app.getPath('userData'), 'settings.json')
+const externalAliasesPath = (): string => join(app.getPath('userData'), 'external-aliases.json')
 
 function readJSON<T>(filePath: string, fallback: T): T {
   if (!existsSync(filePath)) return fallback
@@ -48,6 +49,22 @@ export function updateTunnel(id: string, patch: Partial<TunnelConfig>): TunnelCo
 export function removeTunnel(id: string): void {
   const tunnels = getAllTunnels().filter((t) => t.id !== id)
   writeJSON(tunnelsPath(), tunnels)
+}
+
+// --- External Aliases ---
+
+export function getExternalAliases(): Record<string, string> {
+  return readJSON<Record<string, string>>(externalAliasesPath(), {})
+}
+
+export function saveExternalAlias(id: string, alias: string): void {
+  const aliases = getExternalAliases()
+  if (alias) {
+    aliases[id] = alias
+  } else {
+    delete aliases[id]
+  }
+  writeJSON(externalAliasesPath(), aliases)
 }
 
 // --- App Settings ---

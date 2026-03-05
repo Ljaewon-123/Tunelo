@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import AppIcon from '@renderer/shared/ui/AppIcon.vue'
 import ListTransition from '@renderer/shared/ui/ListTransition.vue'
 import { useTunnelStore } from '@renderer/stores/store'
@@ -24,6 +24,7 @@ let unsubRefresh: (() => void) | null = null
 onMounted(() => {
   store.init()
   unsubRefresh = tunnelAPI.onRefreshRequest(() => store.refresh())
+  syncHeight()
 })
 
 onUnmounted(() => {
@@ -32,26 +33,23 @@ onUnmounted(() => {
 
 const displayName = (tunnel: TunnelWithStatus | ExternalTunnel): string => {
   if ('source' in tunnel && tunnel.source === 'external') {
-    return (tunnel as ExternalTunnel).sshUser
-      ? `${(tunnel as ExternalTunnel).sshUser}@${(tunnel as ExternalTunnel).sshHost}:${tunnel.localPort}`
-      : `${(tunnel as ExternalTunnel).sshHost}:${tunnel.localPort}`
+    const t = tunnel as ExternalTunnel
+    return t.alias || (t.sshUser ? `${t.sshUser}@${t.sshHost}` : t.sshHost)
   }
   const t = tunnel as TunnelWithStatus
   return t.alias || `${t.host}:${t.localPort}`
 }
 
-// 동적 높이 계산: 헤더(44) + 터널 항목당 40px + 여백
-const targetHeight = computed(() => {
-  const itemCount = store.connectedTunnels.length
-  const listHeight = itemCount > 0 ? itemCount * 40 + 8 : 36
-  return 44 + listHeight + 8
-})
+const containerRef = ref<HTMLElement | null>(null)
 
-watch(
-  targetHeight,
-  (h) => tunnelAPI.setOverlayHeight(h),
-  { immediate: true }
-)
+async function syncHeight(): Promise<void> {
+  await nextTick()
+  if (containerRef.value) {
+    tunnelAPI.setOverlayHeight(containerRef.value.scrollHeight)
+  }
+}
+
+watch(() => store.connectedTunnels.length, syncHeight)
 
 function openMainWindow(): void {
   tunnelAPI.openMainWindow()
@@ -59,7 +57,7 @@ function openMainWindow(): void {
 </script>
 
 <template>
-  <div class="flex flex-col bg-gray-900/80 backdrop-blur-md text-white select-none overflow-hidden">
+  <div ref="containerRef" class="inline-flex flex-col w-full bg-gray-900/80 backdrop-blur-md text-white select-none overflow-hidden">
     <!-- 헤더 (드래그 핸들) -->
     <div
       class="drag-handle flex items-center justify-between px-3 h-11 shrink-0 border-b border-gray-700/50"
@@ -114,7 +112,7 @@ function openMainWindow(): void {
             {{ displayName(tunnel) }}
           </span>
           <span class="ml-auto text-xs text-gray-500 shrink-0">
-            :{{ tunnel.localPort }}
+            {{ tunnel.localPort }} → {{ tunnel.remotePort }}
           </span>
         </div>
       </ListTransition>

@@ -10,6 +10,7 @@ let mainWindow: BrowserWindow | null = null
 let overlayWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let isQuitting = false
+const externalAliases = new Map<string, string>()
 
 // --- 렌더러 로딩 헬퍼 ---
 
@@ -142,10 +143,15 @@ function broadcastStatus(status: TunnelStatus): void {
   })
 }
 
+function applyAliases(tunnels: ExternalTunnel[]): ExternalTunnel[] {
+  return tunnels.map((t) => ({ ...t, alias: externalAliases.get(t.id) ?? t.alias }))
+}
+
 function broadcastExternalUpdate(tunnels: ExternalTunnel[]): void {
+  const withAliases = applyAliases(tunnels)
   BrowserWindow.getAllWindows().forEach((win) => {
     if (!win.isDestroyed()) {
-      win.webContents.send('tunnel:externalUpdated', tunnels)
+      win.webContents.send('tunnel:externalUpdated', withAliases)
     }
   })
 }
@@ -198,7 +204,17 @@ function registerIpcHandlers(): void {
   )
 
   // 외부 터널 조회
-  ipcMain.handle('tunnel:getExternal', () => tunnelManager.getExternalTunnels())
+  ipcMain.handle('tunnel:getExternal', () => applyAliases(tunnelManager.getExternalTunnels()))
+
+  // 외부 터널 별칭 저장 (모든 창에서 공유, 파일에 영속화)
+  ipcMain.handle('external:setAlias', (_, id: string, alias: string) => {
+    if (alias) {
+      externalAliases.set(id, alias)
+    } else {
+      externalAliases.delete(id)
+    }
+    tunnelStore.saveExternalAlias(id, alias)
+  })
 
   // 외부 터널 프로세스 종료
   ipcMain.handle('tunnel:killExternal', (_, pid: number) => {
@@ -219,6 +235,11 @@ function registerIpcHandlers(): void {
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.tunelo.app')
+
+  // 저장된 외부 터널 별칭 로드
+  for (const [id, alias] of Object.entries(tunnelStore.getExternalAliases())) {
+    externalAliases.set(id, alias)
+  }
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)

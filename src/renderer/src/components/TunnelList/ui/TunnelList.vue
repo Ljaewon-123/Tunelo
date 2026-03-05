@@ -39,7 +39,15 @@ async function handleDelete(id: string): Promise<void> {
 }
 
 async function handleRename(id: string, alias: string): Promise<void> {
-  await store.updateTunnel(id, { alias: alias || undefined })
+  try {
+    if (id.startsWith('ext-')) {
+      await store.renameExternal(id, alias)
+    } else {
+      await store.updateTunnel(id, { alias: alias || undefined })
+    }
+  } catch (e) {
+    console.error('Rename failed:', e)
+  }
 }
 
 async function handleKillExternal(pid: number): Promise<void> {

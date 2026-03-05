@@ -46,6 +46,8 @@ const tunnelAPI = {
 
   // 외부 터널
   getExternal: (): Promise<ExternalTunnel[]> => ipcRenderer.invoke('tunnel:getExternal'),
+  setExternalAlias: (id: string, alias: string): Promise<void> =>
+    ipcRenderer.invoke('external:setAlias', id, alias),
   killExternal: (pid: number): Promise<void> => ipcRenderer.invoke('tunnel:killExternal', pid),
   onExternalUpdated: (cb: (tunnels: ExternalTunnel[]) => void): (() => void) => {
     const handler = (_: Electron.IpcRendererEvent, tunnels: ExternalTunnel[]): void => cb(tunnels)

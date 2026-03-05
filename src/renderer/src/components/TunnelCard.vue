@@ -22,7 +22,7 @@ const isExternal = (t: Tunnel): t is ExternalTunnel =>
   'source' in t && t.source === 'external'
 
 const displayName = (t: Tunnel): string => {
-  if (isExternal(t)) return t.sshUser ? `${t.sshUser}@${t.sshHost}` : t.sshHost
+  if (isExternal(t)) return t.alias || (t.sshUser ? `${t.sshUser}@${t.sshHost}` : t.sshHost)
   return t.alias || `${t.host}:${t.localPort}`
 }
 
@@ -53,16 +53,16 @@ const editingAlias = ref('')
 const aliasInput = ref<HTMLInputElement | null>(null)
 
 function startEdit(): void {
-  if (isExternal(props.tunnel)) return
-  editingAlias.value = (props.tunnel as TunnelWithStatus).alias ?? ''
+  editingAlias.value = props.tunnel.alias ?? ''
   isEditing.value = true
   nextTick(() => aliasInput.value?.select())
 }
 
 function confirmEdit(): void {
   if (!isEditing.value) return
+  const alias = editingAlias.value.trim()
   isEditing.value = false
-  emit('rename', props.tunnel.id, editingAlias.value.trim())
+  emit('rename', props.tunnel.id, alias)
 }
 
 function cancelEdit(): void {
@@ -98,26 +98,24 @@ function cancelEdit(): void {
           "
         />
 
-        <!-- 편집 input (앱 터널) -->
+        <!-- 편집 input -->
         <input
-          v-if="isEditing && !isExternal(props.tunnel)"
+          v-if="isEditing"
           ref="aliasInput"
           v-model="editingAlias"
           type="text"
           class="font-medium text-white bg-gray-700 border border-blue-500 rounded px-1.5 py-0 text-sm focus:outline-none min-w-0 max-w-[160px]"
           @blur="confirmEdit"
-          @keyup.enter="confirmEdit"
-          @keyup.escape="cancelEdit"
+          @keydown.enter.prevent="confirmEdit"
+          @keydown.escape="cancelEdit"
         />
-        <!-- 앱 터널 이름 — hover 시 점선 밑줄로 편집 가능 힌트 -->
+        <!-- 터널 이름 — hover 시 점선 밑줄로 편집 가능 힌트 -->
         <span
-          v-else-if="!isExternal(props.tunnel)"
+          v-else
           class="font-medium text-white truncate cursor-text hover:underline hover:decoration-dashed hover:decoration-gray-500 hover:underline-offset-2"
           title="더블클릭으로 별칭 편집"
           @dblclick="startEdit"
         >{{ displayName(props.tunnel) }}</span>
-        <!-- 외부 터널 이름 -->
-        <span v-else class="font-medium text-white truncate">{{ displayName(props.tunnel) }}</span>
 
         <!-- 외부 터널 배지 -->
         <span

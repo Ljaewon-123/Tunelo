@@ -141,6 +141,13 @@ export const useTunnelStore = defineStore('tunnel', () => {
     externalTunnels.value = externalTunnels.value.filter((t) => t.pid !== pid)
   }
 
+  async function renameExternal(id: string, alias: string): Promise<void> {
+    await tunnelAPI.setExternalAlias(id, alias)
+    externalTunnels.value = externalTunnels.value.map((t) =>
+      t.id === id ? { ...t, alias: alias || undefined } : t
+    )
+  }
+
   return {
     configs,
     statuses,
@@ -159,6 +166,7 @@ export const useTunnelStore = defineStore('tunnel', () => {
     connectTunnel,
     disconnectTunnel,
     disconnectAll,
-    killExternalTunnel
+    killExternalTunnel,
+    renameExternal
   }
 })

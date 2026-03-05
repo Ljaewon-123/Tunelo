@@ -33,6 +33,7 @@ export interface AppSettings {
 export interface ExternalTunnel {
   id: string // `ext-${pid}`
   source: 'external'
+  alias?: string
   pid: number
   localPort: number
   remoteHost: string
