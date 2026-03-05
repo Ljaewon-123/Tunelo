@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import AppIcon from '@renderer/shared/ui/AppIcon.vue'
+import ListTransition from '@renderer/shared/ui/ListTransition.vue'
 import { useTunnelStore } from '@renderer/stores/store'
 import { tunnelAPI } from '@renderer/shared/api/ipc'
 import type { TunnelWithStatus, ExternalTunnel } from '@renderer/shared/types/tunnel'
 
 const store = useTunnelStore()
-const isCollapsed = ref(false)
 const isRefreshing = ref(false)
 
 async function handleRefresh(): Promise<void> {
@@ -42,7 +42,6 @@ const displayName = (tunnel: TunnelWithStatus | ExternalTunnel): string => {
 
 // 동적 높이 계산: 헤더(44) + 터널 항목당 40px + 여백
 const targetHeight = computed(() => {
-  if (isCollapsed.value) return 44
   const itemCount = store.connectedTunnels.length
   const listHeight = itemCount > 0 ? itemCount * 40 + 8 : 36
   return 44 + listHeight + 8
@@ -60,7 +59,7 @@ function openMainWindow(): void {
 </script>
 
 <template>
-  <div class="h-full flex flex-col bg-gray-900 text-white select-none overflow-hidden">
+  <div class="flex flex-col bg-gray-900/80 backdrop-blur-md text-white select-none overflow-hidden">
     <!-- 헤더 (드래그 핸들) -->
     <div
       class="drag-handle flex items-center justify-between px-3 h-11 shrink-0 border-b border-gray-700/50"
@@ -86,14 +85,6 @@ function openMainWindow(): void {
         >
           <AppIcon name="refresh" class="size-3" />
         </button>
-        <!-- 펼치기/접기 -->
-        <button
-          class="p-1 text-gray-400 hover:text-white rounded transition-colors text-xs"
-          :title="isCollapsed ? '펼치기' : '접기'"
-          @click="isCollapsed = !isCollapsed"
-        >
-          {{ isCollapsed ? '▼' : '▲' }}
-        </button>
         <!-- 메인 창 열기 -->
         <div class="relative group">
           <button
@@ -110,9 +101,9 @@ function openMainWindow(): void {
     </div>
 
     <!-- 터널 목록 -->
-    <div v-if="!isCollapsed" class="flex-1 overflow-y-auto px-3 py-1.5">
+    <div class="px-3 py-1.5 bg-white/5">
       <!-- 연결된 터널 -->
-      <div v-if="store.connectedTunnels.length > 0" class="space-y-1">
+      <ListTransition v-if="store.connectedTunnels.length > 0" tag="div" class="space-y-1 relative">
         <div
           v-for="tunnel in store.connectedTunnels"
           :key="tunnel.id"
@@ -126,7 +117,7 @@ function openMainWindow(): void {
             :{{ tunnel.localPort }}
           </span>
         </div>
-      </div>
+      </ListTransition>
 
       <!-- 연결 없음 -->
       <div v-else class="py-1.5 text-xs text-gray-500 text-center">

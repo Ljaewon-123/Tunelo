@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useTunnelStore } from '@renderer/stores/store'
 import TunnelCard from '@renderer/components/TunnelCard.vue'
+import ListTransition from '@renderer/shared/ui/ListTransition.vue'
 import type { TunnelWithStatus, ExternalTunnel } from '@renderer/shared/types/tunnel'
 
 const emit = defineEmits<{
@@ -54,7 +55,7 @@ async function handleKillExternal(pid: number): Promise<void> {
       <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
         연결됨 ({{ connected.length }})
       </h2>
-      <div class="space-y-2">
+      <ListTransition tag="div" class="space-y-2 relative">
         <TunnelCard
           v-for="tunnel in connected"
           :key="tunnel.id"
@@ -67,7 +68,7 @@ async function handleKillExternal(pid: number): Promise<void> {
           @rename="handleRename"
           @kill-external="handleKillExternal"
         />
-      </div>
+      </ListTransition>
     </section>
 
     <!-- 연결되지 않은 터널 섹션 -->
@@ -75,7 +76,7 @@ async function handleKillExternal(pid: number): Promise<void> {
       <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
         미연결 ({{ disconnected.length }})
       </h2>
-      <div class="space-y-2">
+      <ListTransition tag="div" class="space-y-2 relative">
         <TunnelCard
           v-for="tunnel in disconnected"
           :key="tunnel.id"
@@ -88,7 +89,7 @@ async function handleKillExternal(pid: number): Promise<void> {
           @rename="handleRename"
           @kill-external="handleKillExternal"
         />
-      </div>
+      </ListTransition>
     </section>
 
     <!-- 빈 상태 -->
