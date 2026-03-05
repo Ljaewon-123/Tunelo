@@ -147,14 +147,18 @@ Write-Host "[3/3] Connection verified!" -ForegroundColor Green
 Write-Host ""
 Write-Host "[4/4] Starting SSH tunnel  localhost:18080 -> container:8080 ..." -ForegroundColor Cyan
 
-# 이미 18080 포트를 점유한 프로세스가 있으면 먼저 종료
-$existingTunnel = netstat -ano | Select-String "0.0.0.0:18080|127.0.0.1:18080"
-if ($existingTunnel) {
-  Write-Host "  Port 18080 already in use. Killing existing process..." -ForegroundColor Yellow
-  $pid18080 = ($existingTunnel -split '\s+')[-1] | Select-Object -First 1
-  if ($pid18080 -match '^\d+$') { Stop-Process -Id $pid18080 -Force -ErrorAction SilentlyContinue }
-  Start-Sleep -Seconds 1
+# 18080-18085 전체 포트 선점 여부 확인 후 PID 기반으로만 종료 (무관한 ssh 세션 보호)
+foreach ($port in 18080..18085) {
+  $line = netstat -ano | Select-String "127\.0\.0\.1:${port}\s|0\.0\.0\.0:${port}\s" | Select-Object -First 1
+  if ($line) {
+    $existingPid = ($line.ToString() -split '\s+')[-1].Trim()
+    if ($existingPid -match '^\d+$') {
+      Write-Host "  Port $port in use (PID $existingPid). Killing..." -ForegroundColor Yellow
+      Stop-Process -Id $existingPid -Force -ErrorAction SilentlyContinue
+    }
+  }
 }
+Start-Sleep -Milliseconds 500
 
 # 터널 프로세스 백그라운드 실행 (Start-Process 로 숨김 창 생성)
 $tunnelArgs = @("-N", "-L", "18080:localhost:8080", "-o", "ExitOnForwardFailure=yes", $sshHost)
