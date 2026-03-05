@@ -128,12 +128,15 @@ export const useTunnelStore = defineStore('tunnel', () => {
   }
 
   async function disconnectAll(): Promise<void> {
+    const externalPids = externalTunnels.value.map((t) => t.pid)
     await tunnelAPI.disconnectAll()
+    await Promise.all(externalPids.map((pid) => tunnelAPI.killExternal(pid)))
     const next = new Map<string, TunnelStatus>()
     for (const [id] of statuses.value) {
       next.set(id, { id, connected: false })
     }
     statuses.value = next
+    externalTunnels.value = []
   }
 
   async function killExternalTunnel(pid: number): Promise<void> {

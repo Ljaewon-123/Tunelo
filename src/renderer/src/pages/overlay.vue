@@ -113,7 +113,7 @@ function openMainWindow(): void {
             {{ displayName(tunnel) }}
           </span>
           <span class="ml-auto text-xs text-gray-500 shrink-0">
-            {{ tunnel.localPort }} → {{ tunnel.remotePort }}
+            {{ tunnel.localPort }}:{{ tunnel.remotePort }}
           </span>
         </div>
       </ListTransition>
