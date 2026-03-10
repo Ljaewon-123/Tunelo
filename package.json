@@ -28,7 +28,7 @@
     "defu": "^6.1.4",
     "destr": "^2.0.5",
     "pinia": "^3.0.4",
-    "vue-router": "^4.6.4"
+    "vue-router": "^5.0.3"
   },
   "devDependencies": {
     "@electron-toolkit/tsconfig": "^1.0.1",
@@ -39,7 +39,6 @@
     "electron-vite": "^3.0.0",
     "prettier": "^3.4.2",
     "typescript": "^5.7.3",
-    "unplugin-vue-router": "^0.19.2",
     "vite": "^6.0.7",
     "vite-plugin-vue-devtools": "^8.0.7",
     "vue": "^3.5.13",
